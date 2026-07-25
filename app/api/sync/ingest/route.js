@@ -27,29 +27,42 @@ export async function POST(req) {
       const type = evt.type;
       const payload = evt.payload || {};
 
-      const grandTotal = Number(payload.grandTotal ?? payload.grand_total ?? payload.amount ?? payload.total ?? 0);
+      const details = payload.order_details || {};
+      const grandTotal = Number(payload.grandTotal ?? payload.grand_total ?? details.grandTotal ?? details.grand_total ?? payload.amount ?? payload.total ?? 0);
 
       if ((type === 'order_settled' || type === 'payment_done') && grandTotal > 0) {
-        const localId = BigInt(payload.localOrderId ?? payload.local_order_id ?? payload.id ?? Date.now());
-        const tableNum = String(payload.tableNumber ?? payload.table_number ?? payload.table_id ?? 'Virtual');
-        const paymentMethod = String(payload.paymentMethod ?? payload.payment_mode ?? payload.payment_method ?? 'Cash');
-        const status = String(payload.status ?? 'settled');
-        const items = typeof payload.items === 'string' ? payload.items : JSON.stringify(payload.items || []);
-        const custName = payload.customerName ?? payload.customer_name ?? null;
-        const custPhone = payload.customerPhone ?? payload.customer_phone ?? payload.phone ?? null;
-        const createdAt = payload.created_at ?? payload.createdAt ? new Date(payload.created_at || payload.createdAt) : new Date();
+        const rawId = payload.localOrderId ?? payload.local_order_id ?? details.id ?? payload.id ?? evt.local_id ?? Date.now();
+        let localId;
+        try {
+          localId = BigInt(rawId);
+        } catch (e) {
+          localId = BigInt(Date.now());
+        }
 
-        const gstEnabled = Boolean(payload.gstEnabled ?? payload.gst_enabled);
-        const gstRate = Number(payload.gstRate ?? payload.gst_rate ?? 0);
-        const gstAmount = Number(payload.gstAmount ?? payload.gst_amount ?? 0);
+        const tableNum = String(payload.tableNumber ?? payload.table_number ?? payload.table_id ?? details.table_number ?? 'Virtual');
+        const paymentMethod = String(payload.paymentMethod ?? payload.payment_mode ?? payload.payment_method ?? details.paymentMethod ?? details.payment_mode ?? 'Cash');
+        const status = String(payload.status ?? details.status ?? 'settled');
+        
+        const rawItems = payload.items ?? payload.cart ?? details.cart ?? details.items ?? [];
+        const items = typeof rawItems === 'string' ? rawItems : JSON.stringify(rawItems);
 
-        const serviceChargeEnabled = Boolean(payload.serviceChargeEnabled ?? payload.service_charge_enabled);
-        const serviceChargeRate = Number(payload.serviceChargeRate ?? payload.service_charge_rate ?? 0);
-        const serviceChargeAmount = Number(payload.serviceChargeAmount ?? payload.service_charge_amount ?? 0);
+        const custName = payload.customerName ?? payload.customer_name ?? details.customerName ?? details.customer_name ?? null;
+        const custPhone = payload.customerPhone ?? payload.customer_phone ?? payload.phone ?? details.customerPhone ?? details.phone ?? null;
 
-        const discountAmount = Number(payload.discountAmount ?? payload.discount_amount ?? 0);
-        const tipAmount = Number(payload.tipAmount ?? payload.tip_amount ?? 0);
-        const covers = Number(payload.covers ?? 1);
+        const rawDate = payload.created_at ?? payload.createdAt ?? payload.settled_at ?? details.timestamp ?? details.created_at;
+        const createdAt = rawDate ? new Date(rawDate) : new Date();
+
+        const gstEnabled = Boolean(payload.gstEnabled ?? payload.gst_enabled ?? (details.gstAmount > 0));
+        const gstRate = Number(payload.gstRate ?? payload.gst_rate ?? details.gstRate ?? 0);
+        const gstAmount = Number(payload.gstAmount ?? payload.gst_amount ?? details.gstAmount ?? details.gst_amount ?? 0);
+
+        const serviceChargeEnabled = Boolean(payload.serviceChargeEnabled ?? payload.service_charge_enabled ?? (details.serviceCharge > 0));
+        const serviceChargeRate = Number(payload.serviceChargeRate ?? payload.service_charge_rate ?? details.serviceChargeRate ?? 0);
+        const serviceChargeAmount = Number(payload.serviceChargeAmount ?? payload.service_charge_amount ?? details.serviceCharge ?? details.service_charge ?? 0);
+
+        const discountAmount = Number(payload.discountAmount ?? payload.discount_amount ?? details.discountAmt ?? details.discount_amount ?? 0);
+        const tipAmount = Number(payload.tipAmount ?? payload.tip_amount ?? details.tipAmount ?? 0);
+        const covers = Number(payload.covers ?? details.covers ?? 1);
 
         await prisma.syncedOrder.upsert({
           where: {

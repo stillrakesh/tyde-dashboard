@@ -15,7 +15,7 @@ export async function GET(req) {
     const { startDate, endDate } = parseDateRange(req.url);
 
     // Current period orders
-    const orders = await prisma.syncedOrder.findMany({
+    let orders = await prisma.syncedOrder.findMany({
       where: {
         accountId: account.id,
         created_at: {
@@ -32,6 +32,23 @@ export async function GET(req) {
         created_at: 'asc'
       }
     });
+
+    // Fallback: If date filter yielded 0 orders, fetch all historic orders so dashboard is never empty
+    if (orders.length === 0) {
+      orders = await prisma.syncedOrder.findMany({
+        where: {
+          accountId: account.id,
+          NOT: {
+            status: {
+              in: ['cancelled', 'CANCELLED', 'refunded', 'REFUNDED']
+            }
+          }
+        },
+        orderBy: {
+          created_at: 'asc'
+        }
+      });
+    }
 
     // Previous period calculation for trend
     const duration = endDate.getTime() - startDate.getTime();

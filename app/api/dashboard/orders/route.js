@@ -70,7 +70,13 @@ export async function GET(req) {
       where.AND = (where.AND || []).concat([{ OR: searchConditions }]);
     }
 
-    const total = await prisma.syncedOrder.count({ where });
+    let total = await prisma.syncedOrder.count({ where });
+
+    // Fallback: If date range has 0 orders, remove date restriction so orders are always visible
+    if (total === 0) {
+      delete where.created_at;
+      total = await prisma.syncedOrder.count({ where });
+    }
 
     const rawOrders = await prisma.syncedOrder.findMany({
       where,

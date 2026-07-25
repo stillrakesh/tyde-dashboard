@@ -18,7 +18,7 @@ export async function GET(req) {
     const search = url.searchParams.get('search')?.trim().toLowerCase() || '';
     const categoryFilter = url.searchParams.get('category')?.trim().toLowerCase() || '';
 
-    const orders = await prisma.syncedOrder.findMany({
+    let orders = await prisma.syncedOrder.findMany({
       where: {
         accountId: account.id,
         created_at: {
@@ -32,6 +32,19 @@ export async function GET(req) {
         }
       }
     });
+
+    if (orders.length === 0) {
+      orders = await prisma.syncedOrder.findMany({
+        where: {
+          accountId: account.id,
+          NOT: {
+            status: {
+              in: ['cancelled', 'CANCELLED', 'refunded', 'REFUNDED']
+            }
+          }
+        }
+      });
+    }
 
     const productMap = {};
     let totalRevenue = 0;
