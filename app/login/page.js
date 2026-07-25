@@ -31,6 +31,7 @@ export default function LoginPage() {
       if (data.success) {
         localStorage.setItem('tyde_cloud_token', data.token);
         localStorage.setItem('tyde_cloud_account', JSON.stringify(data.account));
+        document.cookie = `tyde_cloud_token=${data.token}; path=/; max-age=2592000; SameSite=Lax`;
         router.push('/');
       } else {
         setError(data.message || 'Authentication failed');
