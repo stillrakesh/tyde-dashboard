@@ -64,6 +64,13 @@ export default function OverviewPage() {
 
   useEffect(() => {
     fetchData(fromDate, toDate);
+
+    // 30-second continuous auto-refresh polling
+    const interval = setInterval(() => {
+      fetchData(fromDate, toDate);
+    }, 30000);
+
+    return () => clearInterval(interval);
   }, [fetchData, fromDate, toDate]);
 
   const handleRangeChange = (newFrom, newTo, key) => {
