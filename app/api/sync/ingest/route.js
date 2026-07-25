@@ -27,10 +27,11 @@ export async function POST(req) {
       const type = evt.type;
       const payload = evt.payload || {};
 
-      if (type === 'order_settled' || type === 'order_created' || type === 'payment_done') {
+      const grandTotal = Number(payload.grandTotal ?? payload.grand_total ?? payload.amount ?? payload.total ?? 0);
+
+      if ((type === 'order_settled' || type === 'payment_done') && grandTotal > 0) {
         const localId = BigInt(payload.localOrderId ?? payload.local_order_id ?? payload.id ?? Date.now());
         const tableNum = String(payload.tableNumber ?? payload.table_number ?? payload.table_id ?? 'Virtual');
-        const grandTotal = Number(payload.grandTotal ?? payload.grand_total ?? payload.amount ?? payload.total ?? 0);
         const paymentMethod = String(payload.paymentMethod ?? payload.payment_mode ?? payload.payment_method ?? 'Cash');
         const status = String(payload.status ?? 'settled');
         const items = typeof payload.items === 'string' ? payload.items : JSON.stringify(payload.items || []);
