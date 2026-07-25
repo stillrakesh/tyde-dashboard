@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  passwordHash   String
+  restaurantName String
+  apiKey         String   @unique @default(cuid())
+  createdAt      DateTime @default(now())
+
+  orders         SyncedOrder[]
+  customers      SyncedCustomer[]
+  expenses       SyncedExpense[]
+  syncLogs       SyncLog[]
+}
+
+model SyncedOrder {
+  id                   Int      @id @default(autoincrement())
+  accountId            String
+  localOrderId         Int
+  tableNumber          String
+  items                String   @db.Text
+  grandTotal           Float
+  paymentMethod        String   @default("Unknown")
+  status               String
+  customerName         String?
+  customerPhone        String?
+  gstEnabled           Boolean  @default(false)
+  gstRate              Float    @default(0)
+  gstAmount            Float    @default(0)
+  serviceChargeEnabled Boolean  @default(false)
+  serviceChargeRate    Float    @default(0)
+  serviceChargeAmount  Float    @default(0)
+  discountAmount       Float    @default(0)
+  tipAmount            Float    @default(0)
+  covers               Int      @default(1)
+  created_at           DateTime
+  syncedAt             DateTime @default(now())
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, localOrderId])
+  @@index([accountId, created_at])
+  @@index([accountId, status])
+}
+
+model SyncedCustomer {
+  id         Int       @id @default(autoincrement())
+  accountId  String
+  name       String
+  phone      String
+  visits     Int       @default(0)
+  totalSpent Float     @default(0)
+  loyaltyPts Float     @default(0)
+  lastVisit  DateTime?
+  syncedAt   DateTime  @default(now())
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, phone])
+}
+
+model SyncedExpense {
+  id          Int      @id @default(autoincrement())
+  accountId   String
+  amount      Float
+  category    String
+  note        String?
+  expenseDate DateTime
+  syncedAt    DateTime @default(now())
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, expenseDate])
+}
+
+model SyncLog {
+  id         Int      @id @default(autoincrement())
+  accountId  String
+  eventType  String
+  itemCount  Int      @default(1)
+  receivedAt DateTime @default(now())
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+}
