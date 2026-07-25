@@ -29,10 +29,10 @@ export default function OverviewPage() {
     fetchData();
   }, []);
 
-  const totalRev = summary?.totalRevenue || 0;
-  const totalOrders = summary?.totalOrders || 0;
-  const avgOrder = summary?.avgOrderValue || 0;
-  const itemsSold = summary?.totalItems || 0;
+  const totalRev = summary?.revenue || 0;
+  const totalOrders = summary?.orderCount || 0;
+  const avgOrder = summary?.aov || 0;
+  const itemsSold = summary?.itemsSold || 0;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>

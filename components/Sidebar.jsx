@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { LayoutDashboard, TrendingUp, ShoppingBag, Users, Receipt, DollarSign, Key, Store, Cloud, CheckCircle2, LogOut } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -17,6 +17,13 @@ const NAV_ITEMS = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const handleLogout = () => {
+    localStorage.removeItem('tyde_cloud_account');
+    document.cookie = 'tyde_cloud_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    router.push('/login');
+  };
 
   if (pathname === '/login') return null;
 
@@ -84,9 +91,9 @@ export default function Sidebar() {
             <div style={{ fontSize: '10px', color: '#94a3b8' }}>Owner Account</div>
           </div>
         </div>
-        <Link href="/login" title="Logout" style={{ color: '#94a3b8', display: 'flex', alignItems: 'center', padding: '6px' }}>
+        <button onClick={handleLogout} title="Logout" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', display: 'flex', alignItems: 'center', padding: '6px' }}>
           <LogOut size={16} />
-        </Link>
+        </button>
       </div>
     </aside>
   );
