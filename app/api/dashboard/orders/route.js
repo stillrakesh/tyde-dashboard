@@ -70,6 +70,7 @@ export async function GET(req) {
 
       return {
         ...order,
+        localOrderId: Number(order.localOrderId),
         items: parsedItems,
         grandTotal: Math.round(order.grandTotal * 100) / 100,
         gstAmount: Math.round(order.gstAmount * 100) / 100,

@@ -28,7 +28,7 @@ export async function POST(req) {
       const payload = evt.payload || {};
 
       if (type === 'order_settled' || type === 'order_created' || type === 'payment_done') {
-        const localId = Number(payload.localOrderId ?? payload.local_order_id ?? payload.id ?? Date.now());
+        const localId = BigInt(payload.localOrderId ?? payload.local_order_id ?? payload.id ?? Date.now());
         const tableNum = String(payload.tableNumber ?? payload.table_number ?? payload.table_id ?? 'Virtual');
         const grandTotal = Number(payload.grandTotal ?? payload.grand_total ?? payload.amount ?? payload.total ?? 0);
         const paymentMethod = String(payload.paymentMethod ?? payload.payment_mode ?? payload.payment_method ?? 'Cash');

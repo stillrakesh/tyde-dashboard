@@ -25,7 +25,7 @@ model Account {
 model SyncedOrder {
   id                   Int      @id @default(autoincrement())
   accountId            String
-  localOrderId         Int
+  localOrderId         BigInt
   tableNumber          String
   items                String   @db.Text
   grandTotal           Float
