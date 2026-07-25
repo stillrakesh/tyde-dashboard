@@ -51,7 +51,6 @@ export async function GET(req) {
       categoryBreakdown[cat] = (categoryBreakdown[cat] || 0) + (exp.amount || 0);
     }
 
-    // Round category breakdown amounts
     Object.keys(categoryBreakdown).forEach(cat => {
       categoryBreakdown[cat] = Math.round(categoryBreakdown[cat] * 100) / 100;
     });
@@ -69,7 +68,7 @@ export async function GET(req) {
         totalRevenue: Math.round(totalRevenue * 100) / 100,
         totalExpenses: Math.round(totalExpenses * 100) / 100,
         netProfit: Math.round(netProfit * 100) / 100,
-        profitMargin: Math.round(profitMargin * 100) / 100,
+        profitMargin: Math.round(profitMargin * 10) / 10,
         categoryBreakdown
       }
     });

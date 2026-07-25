@@ -14,7 +14,9 @@ export async function GET(req) {
 
     const url = new URL(req.url);
     const { startDate, endDate } = parseDateRange(req.url);
-    const limit = Math.max(1, parseInt(url.searchParams.get('limit') || '10', 10));
+    const limit = Math.max(1, parseInt(url.searchParams.get('limit') || '50', 10));
+    const search = url.searchParams.get('search')?.trim().toLowerCase() || '';
+    const categoryFilter = url.searchParams.get('category')?.trim().toLowerCase() || '';
 
     const orders = await prisma.syncedOrder.findMany({
       where: {
@@ -32,6 +34,8 @@ export async function GET(req) {
     });
 
     const productMap = {};
+    let totalRevenue = 0;
+    let totalUnits = 0;
 
     for (const order of orders) {
       try {
@@ -44,13 +48,17 @@ export async function GET(req) {
             const unitPrice = Number(item.price ?? item.unitPrice ?? 0);
             const itemRevenue = item.total !== undefined ? Number(item.total) : (unitPrice * qty);
 
+            totalRevenue += itemRevenue;
+            totalUnits += qty;
+
             const key = name.toLowerCase();
             if (!productMap[key]) {
               productMap[key] = {
                 name,
                 category,
                 quantity: 0,
-                revenue: 0
+                revenue: 0,
+                unitPrice: unitPrice || (qty > 0 ? itemRevenue / qty : 0)
               };
             }
             productMap[key].quantity += qty;
@@ -58,21 +66,43 @@ export async function GET(req) {
           }
         }
       } catch (e) {
-        // Safe handling of any JSON parse error
+        // Safe handling
       }
     }
 
-    const sortedProducts = Object.values(productMap)
+    let productsList = Object.values(productMap);
+
+    if (search) {
+      productsList = productsList.filter(p => p.name.toLowerCase().includes(search) || p.category.toLowerCase().includes(search));
+    }
+
+    if (categoryFilter && categoryFilter !== 'all') {
+      productsList = productsList.filter(p => p.category.toLowerCase() === categoryFilter);
+    }
+
+    const categories = Array.from(new Set(Object.values(productMap).map(p => p.category))).sort();
+
+    const sortedProducts = productsList
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, limit)
-      .map(p => ({
+      .map((p, index) => ({
+        rank: index + 1,
         ...p,
-        revenue: Math.round(p.revenue * 100) / 100
+        unitsSold: p.quantity,
+        revenue: Math.round(p.revenue * 100) / 100,
+        unitPrice: Math.round(p.unitPrice * 100) / 100,
+        contributionPercentage: totalRevenue > 0 ? Math.round((p.revenue / totalRevenue) * 100 * 10) / 10 : 0
       }));
 
     return NextResponse.json({
       success: true,
-      products: sortedProducts
+      products: sortedProducts,
+      categories,
+      summary: {
+        totalRevenue: Math.round(totalRevenue * 100) / 100,
+        totalUnits,
+        totalProducts: productsList.length
+      }
     });
   } catch (err) {
     console.error('API /dashboard/products error:', err);

@@ -16,6 +16,7 @@ export async function GET(req) {
     const { startDate, endDate } = parseDateRange(req.url);
     const status = url.searchParams.get('status')?.trim();
     const paymentMethod = url.searchParams.get('paymentMethod')?.trim();
+    const orderType = url.searchParams.get('orderType')?.trim() || url.searchParams.get('type')?.trim();
     const search = url.searchParams.get('search')?.trim();
     const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
     const limit = Math.max(1, parseInt(url.searchParams.get('limit') || '20', 10));
@@ -29,24 +30,44 @@ export async function GET(req) {
     };
 
     if (status && status !== 'all') {
-      where.status = { equals: status };
+      where.status = { equals: status, mode: 'insensitive' };
     }
 
     if (paymentMethod && paymentMethod !== 'all') {
-      where.paymentMethod = { equals: paymentMethod };
+      where.paymentMethod = { contains: paymentMethod, mode: 'insensitive' };
+    }
+
+    if (orderType && orderType !== 'all') {
+      const typeLower = orderType.toLowerCase();
+      if (typeLower.includes('dine')) {
+        where.AND = (where.AND || []).concat([
+          { NOT: { tableNumber: { contains: 'takeaway', mode: 'insensitive' } } },
+          { NOT: { tableNumber: { contains: 'pickup', mode: 'insensitive' } } },
+          { NOT: { tableNumber: { contains: 'delivery', mode: 'insensitive' } } },
+          { NOT: { tableNumber: { contains: 'parcel', mode: 'insensitive' } } }
+        ]);
+      } else if (typeLower.includes('take') || typeLower.includes('pick') || typeLower.includes('parcel')) {
+        where.OR = (where.OR || []).concat([
+          { tableNumber: { contains: 'takeaway', mode: 'insensitive' } },
+          { tableNumber: { contains: 'pickup', mode: 'insensitive' } },
+          { tableNumber: { contains: 'parcel', mode: 'insensitive' } }
+        ]);
+      } else if (typeLower.includes('deliver')) {
+        where.tableNumber = { contains: 'delivery', mode: 'insensitive' };
+      }
     }
 
     if (search) {
       const isNum = !isNaN(Number(search));
       const searchConditions = [
-        { customerName: { contains: search } },
-        { customerPhone: { contains: search } },
-        { tableNumber: { contains: search } }
+        { customerName: { contains: search, mode: 'insensitive' } },
+        { customerPhone: { contains: search, mode: 'insensitive' } },
+        { tableNumber: { contains: search, mode: 'insensitive' } }
       ];
       if (isNum) {
-        searchConditions.push({ localOrderId: Number(search) });
+        searchConditions.push({ localOrderId: BigInt(search) });
       }
-      where.OR = searchConditions;
+      where.AND = (where.AND || []).concat([{ OR: searchConditions }]);
     }
 
     const total = await prisma.syncedOrder.count({ where });
@@ -68,9 +89,15 @@ export async function GET(req) {
         parsedItems = [];
       }
 
+      const tblLower = String(order.tableNumber || '').toLowerCase();
+      let derivedType = 'Dine In';
+      if (tblLower.includes('delivery')) derivedType = 'Delivery';
+      else if (tblLower.includes('takeaway') || tblLower.includes('pickup') || tblLower.includes('parcel')) derivedType = 'Takeaway';
+
       return {
         ...order,
         localOrderId: Number(order.localOrderId),
+        orderType: derivedType,
         items: parsedItems,
         grandTotal: Math.round(order.grandTotal * 100) / 100,
         gstAmount: Math.round(order.gstAmount * 100) / 100,
