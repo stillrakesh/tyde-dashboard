@@ -86,6 +86,26 @@ export default function OverviewPage() {
   const topItems = summary?.topItems || [];
   const revenueTrend = summary?.revenueTrend || [];
 
+  if (loading && !summary) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <SubTabNav />
+        <DateRangeHeader
+          activePreset={presetKey}
+          fromDate={fromDate}
+          toDate={toDate}
+          onRangeChange={handleRangeChange}
+          onRefresh={() => fetchData(fromDate, toDate)}
+        />
+        <div style={{ padding: '80px', textAlign: 'center', background: 'white', borderRadius: '20px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: '40px', height: '40px', border: '4px solid #fecdd3', borderTopColor: '#94161c', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+          <h3 style={{ fontSize: '16px', fontWeight: '900', color: '#0f172a', marginTop: '16px' }}>Fetching Live Cloud POS Analytics...</h3>
+          <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       {/* SubTab Navigation */}
