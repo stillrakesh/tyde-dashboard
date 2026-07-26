@@ -42,6 +42,10 @@ model SyncedOrder {
   discountAmount       Float    @default(0)
   tipAmount            Float    @default(0)
   covers               Int      @default(1)
+  orderType            String   @default("Dine In")
+  subtotal             Float    @default(0)
+  splitPayments        String?  @db.Text
+  roundOff             Float    @default(0)
   created_at           DateTime
   syncedAt             DateTime @default(now())
 

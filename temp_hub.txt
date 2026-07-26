@@ -1,12 +1,10 @@
-"use client";
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { TrendingUp, ShoppingBag, CreditCard, Clock, Search, Printer, Download, BarChart3, PieChart, ArrowUpRight, ArrowDownRight, Package, Calendar, Zap, AlertTriangle, CheckCircle, DollarSign, Layers, Trash2, Plus, Settings, Users, ShieldAlert, RefreshCw, FileText, Filter, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell, LineChart, Line, AreaChart, Area } from 'recharts';
 import * as XLSX from 'xlsx';
-const formatCurrency = (val) => new Intl.NumberFormat('en-IN', {style:'currency', currency:'INR'}).format(val || 0);
-const getOrderTotal = (o) => o.grandTotal || o.grand_total || 0;
-
-
+import { formatCurrency, getOrderTotal } from '../../utils/formatters';
+import { BASE_URL } from '../../constants';
+import apiService from '../../services/apiService';
 
 
 const PALETTE = ['#94161c','#2563eb','#10b981','#f59e0b','#8b5cf6','#06b6d4','#ef4444','#84cc16'];
@@ -54,37 +52,14 @@ const TabBtn = ({ label, icon: Icon, active, onClick }) => (
 
 const RANGES = ['Today','Yesterday','Last 7 Days','Last 30 Days','This Month','Last Month','Custom'];
 
-export default function Dashboard() {
-  const [orderHistory, setOrderHistory] = useState([]);
-  const [menuItems, setMenuItems] = useState([]);
-  const [loadingData, setLoadingData] = useState(true);
+const ReportsHub = ({ orderHistory=[], menuItems=[], tables=[], nonTableOrders=[], loadHistory, initialTab='overview' }) => {
+  const [tab, setTab] = useState(initialTab || 'overview');
 
   useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        const res = await fetch('/api/dashboard/orders?all=true');
-        const data = await res.json();
-        if(data.success) {
-          setOrderHistory(data.orders);
-        }
-      } catch(e) {
-        console.error(e);
-      } finally {
-        setLoadingData(false);
-      }
-    };
-    fetchOrders();
-    const intv = setInterval(fetchOrders, 30000);
-    return () => clearInterval(intv);
-  }, []);
-
-  const [tab, setTab] = useState('overview' || 'overview');
-
-  useEffect(() => {
-    if ('overview') {
-      setTab('overview');
+    if (initialTab) {
+      setTab(initialTab);
     }
-  }, ['overview']);
+  }, [initialTab]);
   const [range, setRange] = useState('Today');
   const [custom, setCustom] = useState({ start: new Date().toISOString().split('T')[0], end: new Date().toISOString().split('T')[0] });
   const [closeHour, setCloseHour] = useState(0);
@@ -1496,4 +1471,4 @@ export default function Dashboard() {
   );
 };
 
-
+export default ReportsHub;

@@ -13,6 +13,56 @@ export async function GET(req) {
     }
 
     const url = new URL(req.url);
+    const isAll = url.searchParams.get('all') === 'true';
+
+    if (isAll) {
+      const rawOrders = await prisma.syncedOrder.findMany({
+        where: { accountId: account.id },
+        orderBy: { created_at: 'desc' }
+      });
+
+      const orders = rawOrders.map(order => {
+        let parsedItems = [];
+        try {
+          parsedItems = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []);
+        } catch (e) {}
+
+        let parsedSplitPayments = null;
+        if (order.splitPayments) {
+          try {
+            parsedSplitPayments = typeof order.splitPayments === 'string' ? JSON.parse(order.splitPayments) : order.splitPayments;
+          } catch (e) {}
+        }
+
+        return {
+          id: order.id,
+          localOrderId: Number(order.localOrderId),
+          tableNumber: order.tableNumber,
+          items: parsedItems,
+          grandTotal: order.grandTotal,
+          subtotal: order.subtotal,
+          paymentMethod: order.paymentMethod,
+          splitPayments: parsedSplitPayments,
+          status: order.status,
+          customerName: order.customerName,
+          customerPhone: order.customerPhone,
+          gstAmount: order.gstAmount,
+          serviceChargeAmount: order.serviceChargeAmount,
+          discountAmount: order.discountAmount,
+          tipAmount: order.tipAmount,
+          roundOff: order.roundOff,
+          covers: order.covers,
+          orderType: order.orderType,
+          created_at: order.created_at
+        };
+      });
+
+      return NextResponse.json({
+        success: true,
+        orders
+      });
+    }
+
     const { startDate, endDate } = parseDateRange(req.url);
     const status = url.searchParams.get('status')?.trim();
     const paymentMethod = url.searchParams.get('paymentMethod')?.trim();
@@ -38,23 +88,7 @@ export async function GET(req) {
     }
 
     if (orderType && orderType !== 'all') {
-      const typeLower = orderType.toLowerCase();
-      if (typeLower.includes('dine')) {
-        where.AND = (where.AND || []).concat([
-          { NOT: { tableNumber: { contains: 'takeaway', mode: 'insensitive' } } },
-          { NOT: { tableNumber: { contains: 'pickup', mode: 'insensitive' } } },
-          { NOT: { tableNumber: { contains: 'delivery', mode: 'insensitive' } } },
-          { NOT: { tableNumber: { contains: 'parcel', mode: 'insensitive' } } }
-        ]);
-      } else if (typeLower.includes('take') || typeLower.includes('pick') || typeLower.includes('parcel')) {
-        where.OR = (where.OR || []).concat([
-          { tableNumber: { contains: 'takeaway', mode: 'insensitive' } },
-          { tableNumber: { contains: 'pickup', mode: 'insensitive' } },
-          { tableNumber: { contains: 'parcel', mode: 'insensitive' } }
-        ]);
-      } else if (typeLower.includes('deliver')) {
-        where.tableNumber = { contains: 'delivery', mode: 'insensitive' };
-      }
+      where.orderType = { contains: orderType, mode: 'insensitive' };
     }
 
     if (search) {
@@ -72,7 +106,6 @@ export async function GET(req) {
 
     let total = await prisma.syncedOrder.count({ where });
 
-    // Fallback: If date range has 0 orders, remove date restriction so orders are always visible
     if (total === 0) {
       delete where.created_at;
       total = await prisma.syncedOrder.count({ where });
@@ -91,20 +124,20 @@ export async function GET(req) {
       let parsedItems = [];
       try {
         parsedItems = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []);
-      } catch (e) {
-        parsedItems = [];
-      }
+      } catch (e) {}
 
-      const tblLower = String(order.tableNumber || '').toLowerCase();
-      let derivedType = 'Dine In';
-      if (tblLower.includes('delivery')) derivedType = 'Delivery';
-      else if (tblLower.includes('takeaway') || tblLower.includes('pickup') || tblLower.includes('parcel')) derivedType = 'Takeaway';
+      let parsedSplitPayments = null;
+      if (order.splitPayments) {
+        try {
+          parsedSplitPayments = typeof order.splitPayments === 'string' ? JSON.parse(order.splitPayments) : order.splitPayments;
+        } catch (e) {}
+      }
 
       return {
         ...order,
         localOrderId: Number(order.localOrderId),
-        orderType: derivedType,
         items: parsedItems,
+        splitPayments: parsedSplitPayments,
         grandTotal: Math.round(order.grandTotal * 100) / 100,
         gstAmount: Math.round(order.gstAmount * 100) / 100,
         serviceChargeAmount: Math.round(order.serviceChargeAmount * 100) / 100,

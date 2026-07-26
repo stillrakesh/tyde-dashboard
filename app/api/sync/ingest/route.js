@@ -63,6 +63,12 @@ export async function POST(req) {
         const discountAmount = Number(payload.discountAmount ?? payload.discount_amount ?? details.discountAmt ?? details.discount_amount ?? 0);
         const tipAmount = Number(payload.tipAmount ?? payload.tip_amount ?? details.tipAmount ?? 0);
         const covers = Number(payload.covers ?? details.covers ?? 1);
+        
+        const orderType = String(payload.orderType ?? payload.type ?? details.type ?? 'Dine In');
+        const subtotal = Number(payload.subtotal ?? details.subtotal ?? 0);
+        const splitPaymentsRaw = payload.splitPayments ?? details.splitPayments ?? null;
+        const splitPayments = splitPaymentsRaw ? (typeof splitPaymentsRaw === 'string' ? splitPaymentsRaw : JSON.stringify(splitPaymentsRaw)) : null;
+        const roundOff = Number(payload.roundOff ?? details.roundOff ?? 0);
 
         await prisma.syncedOrder.upsert({
           where: {
@@ -88,6 +94,10 @@ export async function POST(req) {
             discountAmount,
             tipAmount,
             covers,
+            orderType,
+            subtotal,
+            splitPayments,
+            roundOff,
             created_at: createdAt,
             syncedAt: new Date()
           },
@@ -110,6 +120,10 @@ export async function POST(req) {
             discountAmount,
             tipAmount,
             covers,
+            orderType,
+            subtotal,
+            splitPayments,
+            roundOff,
             created_at: createdAt
           }
         });
