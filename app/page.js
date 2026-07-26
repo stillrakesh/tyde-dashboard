@@ -78,13 +78,7 @@ export default function Dashboard() {
     return () => clearInterval(intv);
   }, []);
 
-  const [tab, setTab] = useState('overview' || 'overview');
-
-  useEffect(() => {
-    if ('overview') {
-      setTab('overview');
-    }
-  }, ['overview']);
+  const [tab, setTab] = useState('overview');
   const [range, setRange] = useState('Today');
   const [custom, setCustom] = useState({ start: new Date().toISOString().split('T')[0], end: new Date().toISOString().split('T')[0] });
   const [closeHour, setCloseHour] = useState(0);
@@ -354,10 +348,8 @@ export default function Dashboard() {
   useEffect(() => { setOrderPage(1); }, [orderSearch, orderTypeFilter, orderPayFilter, orderSort]);
 
   useEffect(() => {
-    apiService.fetchAnalyticsConfig().then(d=>{ setCloseHour(d.closeHour||0); setLocalCloseHour(d.closeHour||0); }).catch(()=>{});
-  }, []);
-
-  useEffect(() => { loadExpenses(); }, [range, custom]);
+    loadExpenses();
+  }, [range, custom]);
 
   useEffect(() => {
     if (tab === 'crm') loadCRM();
@@ -366,16 +358,13 @@ export default function Dashboard() {
 
   const loadCRM = async () => {
     try {
-      const res = await apiService.fetchCustomers();
+      const res = await fetch('/api/dashboard/customers').then(r => r.json());
       if (res.success) setCrmData(res.customers || []);
     } catch (err) { console.warn("Failed to load CRM:", err); }
   };
 
   const loadAudit = async () => {
-    try {
-      const res = await apiService.fetchAuditLogs();
-      if (res.success) setAuditData(res.logs || []);
-    } catch (err) { console.warn("Failed to load audit logs:", err); }
+    setAuditData([]);
   };
 
   const loadExpenses = async () => {
@@ -383,33 +372,34 @@ export default function Dashboard() {
     const s = rangeStart.toISOString().split('T')[0];
     const e = rangeEnd.toISOString().split('T')[0];
     try {
-      const res = await apiService.fetchExpenses(s, e);
+      const res = await fetch(`/api/dashboard/expenses?from=${s}&to=${e}`).then(r => r.json());
       if (res.success) setExpenses(res.expenses || []);
     } catch(err) { console.warn('Expenses fetch failed:', err); }
     setLoading(false);
   };
 
   const handleRefresh = async () => {
-    if (!loadHistory) return;
     setRefreshing(true);
     try {
-      await loadHistory();
+      const res = await fetch('/api/dashboard/orders?all=true').then(r => r.json());
+      if (res.success) setOrderHistory(res.orders || []);
     } catch(e) {}
     setRefreshing(false);
   };
 
   const saveCloseHour = async () => {
-    try {
-      await apiService.updateAnalyticsConfig({ closeHour: localCloseHour });
-      setCloseHour(localCloseHour);
-      setShowSettings(false);
-    } catch(err) { console.error('Failed to update config:', err); }
+    setCloseHour(localCloseHour);
+    setShowSettings(false);
   };
 
   const addExpense = async () => {
     if(!newExp.amount || isNaN(newExp.amount)) return;
     try {
-      await apiService.addExpense({ amount: Number(newExp.amount), category: newExp.category, note: newExp.note, expense_date: newExp.date });
+      await fetch('/api/dashboard/expenses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: Number(newExp.amount), category: newExp.category, note: newExp.note, date: newExp.date })
+      });
       setNewExp({ amount:'', category:'Staff', note:'', date: new Date().toISOString().split('T')[0] });
       loadExpenses();
     } catch(err) { console.error('Failed to add expense:', err); }
@@ -417,7 +407,7 @@ export default function Dashboard() {
 
   const delExpense = async (id) => {
     try {
-      await apiService.deleteExpense(id);
+      await fetch(`/api/dashboard/expenses?id=${id}`, { method: 'DELETE' });
       loadExpenses();
     } catch(err) { console.error('Failed to delete expense:', err); }
   };
@@ -1215,20 +1205,8 @@ export default function Dashboard() {
                         <tr 
                           key={i} 
                           style={{ borderBottom: '1px solid #f1f5f9', cursor: 'pointer', transition: 'background 0.15s ease' }}
-                          onClick={async () => {
+                          onClick={() => {
                             setSelectedCustomerProfile(c);
-                            setCustomerOrdersHistory([]);
-                            // Fetch from server database for complete history
-                            try {
-                              const res = await apiService.fetchCustomerHistory(c.phone);
-                              if (res?.success && res.orders?.length > 0) {
-                                setCustomerOrdersHistory(res.orders);
-                                // Also update profile from server (more accurate)
-                                if (res.customer) setSelectedCustomerProfile(res.customer);
-                                return;
-                              }
-                            } catch (err) { console.warn('Server history fetch failed, using local:', err); }
-                            // Fallback: filter from local orderHistory
                             const phoneStr = String(c.phone || '').trim();
                             const nameStr = String(c.name || '').toLowerCase().trim();
                             const history = (orderHistory || []).filter(o => {
@@ -1424,9 +1402,12 @@ export default function Dashboard() {
                       if (!newCustPhone || newCustPhone.length < 10) return alert("Please enter a valid 10-digit mobile number.");
                       if (!newCustName) return alert("Please enter customer name.");
                       try {
-                        await apiService.saveCustomer({ phone: newCustPhone, name: newCustName });
-                        // Refresh CRM data
-                        const res = await apiService.fetchCustomers();
+                        await fetch('/api/dashboard/customers', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ phone: newCustPhone, name: newCustName })
+                        });
+                        const res = await fetch('/api/dashboard/customers').then(r => r.json());
                         if (res.success) setCrmData(res.customers || []);
                         setShowAddCustomerModal(false);
                         setNewCustPhone('');
