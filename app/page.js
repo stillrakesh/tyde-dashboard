@@ -110,20 +110,28 @@ export default function Dashboard() {
 
   // ─── Date range bounds (with business-day offset) ────────────
   const getDateRange = () => {
-    const today = new Date(); today.setHours(23,59,59,999);
-    let start = new Date(); start.setHours(0,0,0,0);
-    let end = new Date(today);
+    const now = new Date();
+    let start = new Date(now);
+    let end = new Date(now);
+
+    if (now.getHours() < closeHour) {
+      start.setDate(start.getDate() - 1);
+      end.setDate(end.getDate() - 1);
+    }
+
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+
     switch(range) {
-      case 'Yesterday': start.setDate(start.getDate()-1); end.setDate(end.getDate()-1); end.setHours(23,59,59,999); break;
+      case 'Yesterday': start.setDate(start.getDate()-1); end.setDate(end.getDate()-1); break;
       case 'Last 7 Days': start.setDate(start.getDate()-6); break;
       case 'Last 30 Days': start.setDate(start.getDate()-29); break;
-      case 'This Month': start = new Date(today.getFullYear(), today.getMonth(), 1); break;
-      case 'Last Month': start = new Date(today.getFullYear(), today.getMonth()-1, 1); end = new Date(today.getFullYear(), today.getMonth(), 0, 23,59,59,999); break;
+      case 'This Month': start = new Date(now.getFullYear(), now.getMonth(), 1); break;
+      case 'Last Month': start = new Date(now.getFullYear(), now.getMonth()-1, 1); end = new Date(now.getFullYear(), now.getMonth(), 0, 23,59,59,999); break;
       case 'Custom': start = new Date(custom.start+'T00:00:00'); end = new Date(custom.end+'T23:59:59'); break;
     }
-    // Apply business-day close offset: shift boundary back by closeHour
     const offsetMs = closeHour * 3600 * 1000;
-    return { start: new Date(start.getTime() + offsetMs), end: new Date(end.getTime() + offsetMs) };
+    return { start: new Date(start.getTime()), end: new Date(end.getTime() + offsetMs) };
   };
 
   // ─── CRITICAL FIX: Only use orderHistory (settled/completed orders from DB).
