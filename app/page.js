@@ -144,15 +144,16 @@ export default function Dashboard() {
   // ─── Strictly filter to PAID + not cancelled ─────────────────
   // isPaid = the order has PAID payment status AND is not cancelled/canceled
   const filteredOrders = useMemo(() => allOrders.filter(o => {
-    if (!o || !o.timestamp) return false;
-    const ts = new Date(o.timestamp);
+    if (!o) return false;
+    const rawTs = o.timestamp || o.created_at || o.createdAt;
+    if (!rawTs) return false;
+    const ts = new Date(rawTs);
     if (isNaN(ts.getTime())) return false;
     const status = String(o.status || '').toUpperCase();
     const payStatus = String(o.paymentStatus || o.payment_status || '').toUpperCase();
-    // Must be PAID and not cancelled in any spelling variant
     const isCancelled = status === 'CANCELED' || status === 'CANCELLED' || payStatus === 'CANCELLED' || payStatus === 'CANCELED';
     if (isCancelled) return false;
-    const isPaid = payStatus === 'PAID' || status === 'COMPLETED';
+    const isPaid = payStatus === 'PAID' || status === 'COMPLETED' || status === 'SETTLED';
     return isPaid && ts >= rangeStart && ts <= rangeEnd;
   }), [allOrders, rangeStart, rangeEnd]);
 
@@ -161,14 +162,16 @@ export default function Dashboard() {
   const prevStart = new Date(rangeStart.getTime() - rangeMs - 1);
   const prevEnd = new Date(rangeStart.getTime() - 1);
   const prevOrders = useMemo(() => allOrders.filter(o => {
-    if (!o || !o.timestamp) return false;
-    const ts = new Date(o.timestamp);
+    if (!o) return false;
+    const rawTs = o.timestamp || o.created_at || o.createdAt;
+    if (!rawTs) return false;
+    const ts = new Date(rawTs);
     if (isNaN(ts.getTime())) return false;
     const status = String(o.status || '').toUpperCase();
     const payStatus = String(o.paymentStatus || o.payment_status || '').toUpperCase();
     const isCancelled = status === 'CANCELED' || status === 'CANCELLED' || payStatus === 'CANCELLED' || payStatus === 'CANCELED';
     if (isCancelled) return false;
-    const isPaid = payStatus === 'PAID' || status === 'COMPLETED';
+    const isPaid = payStatus === 'PAID' || status === 'COMPLETED' || status === 'SETTLED';
     return isPaid && ts >= prevStart && ts <= prevEnd;
   }), [allOrders, prevStart, prevEnd]);
 
