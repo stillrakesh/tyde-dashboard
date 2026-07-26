@@ -31,7 +31,12 @@ export async function POST(req) {
       const grandTotal = Number(payload.grandTotal ?? payload.grand_total ?? details.grandTotal ?? details.grand_total ?? payload.amount ?? payload.total ?? 0);
 
       if ((type === 'order_settled' || type === 'payment_done') && grandTotal > 0) {
-        const rawId = payload.localOrderId ?? payload.local_order_id ?? details.id ?? payload.id ?? evt.local_id ?? Date.now();
+        let rawId = payload.local_order_id ?? payload.localOrderId;
+        if (!rawId || isNaN(Number(rawId)) || Number(rawId) < 10000) {
+          const ts = payload.created_at || payload.createdAt || payload.settled_at || details.timestamp || details.created_at;
+          rawId = ts ? new Date(ts).getTime() : Date.now();
+          if (!rawId || isNaN(rawId)) rawId = Date.now();
+        }
         let localId;
         try {
           localId = BigInt(rawId);
