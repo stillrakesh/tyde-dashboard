@@ -242,7 +242,12 @@ export default function Dashboard() {
   const trendEnd = new Date(rangeEnd);
   while (trendCursor <= trendEnd && trend.length < 120) {
     const dayStr = trendCursor.toISOString().split('T')[0];
-    const dayOrders = filteredOrders.filter(o => new Date(o.timestamp).toISOString().split('T')[0] === dayStr);
+    const dayOrders = filteredOrders.filter(o => {
+      const rawTs = o.timestamp || o.created_at || o.createdAt;
+      if (!rawTs) return false;
+      const d = new Date(rawTs);
+      return !isNaN(d.getTime()) && d.toISOString().split('T')[0] === dayStr;
+    });
     trend.push({
       key: dayStr,
       label: trendCursor.toLocaleDateString('en-IN', { day:'numeric', month:'short' }),
@@ -255,9 +260,15 @@ export default function Dashboard() {
   // ─── Hourly Breakdown ─────────────────────────────────────────
   const hourlyBuckets = Array.from({ length:24 }, (_,h) => ({ key:`${String(h).padStart(2,'0')}:00`, label:`${String(h).padStart(2,'0')}:00`, revenue:0, orders:0 }));
   filteredOrders.forEach(o => {
-    const h = new Date(o.timestamp).getHours();
-    hourlyBuckets[h].revenue += o.grandTotal || o.grand_total || 0;
-    hourlyBuckets[h].orders++;
+    const rawTs = o.timestamp || o.created_at || o.createdAt;
+    if (!rawTs) return;
+    const d = new Date(rawTs);
+    if (isNaN(d.getTime())) return;
+    const h = d.getHours();
+    if (h >= 0 && h < 24) {
+      hourlyBuckets[h].revenue += o.grandTotal || o.grand_total || 0;
+      hourlyBuckets[h].orders++;
+    }
   });
 
   // ─── Product Performance ──────────────────────────────────────
@@ -347,7 +358,11 @@ export default function Dashboard() {
       return customer.includes(q) || phone.includes(q) || id.includes(q) || pm.includes(q) || amount.includes(q) || tableNum.includes(q) || itemNames.includes(q) || note.includes(q);
     }).sort((a, b) => {
       const dir = orderSort.dir === 'asc' ? 1 : -1;
-      if (orderSort.field === 'timestamp') return dir * (new Date(b.timestamp) - new Date(a.timestamp)) * -1;
+      if (orderSort.field === 'timestamp') {
+        const tsA = new Date(a.timestamp || a.created_at || a.createdAt || 0).getTime() || 0;
+        const tsB = new Date(b.timestamp || b.created_at || b.createdAt || 0).getTime() || 0;
+        return dir * (tsB - tsA) * -1;
+      }
       if (orderSort.field === 'grandTotal') return dir * ((a.grandTotal || a.grand_total || 0) - (b.grandTotal || b.grand_total || 0));
       return 0;
     });
