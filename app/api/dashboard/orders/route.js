@@ -134,15 +134,25 @@ export async function GET(req) {
       }
 
       return {
-        ...order,
+        id: order.id,
         localOrderId: Number(order.localOrderId),
+        tableNumber: order.tableNumber,
         items: parsedItems,
+        grandTotal: Math.round((order.grandTotal || 0) * 100) / 100,
+        subtotal: Math.round((order.subtotal || 0) * 100) / 100,
+        paymentMethod: order.paymentMethod || 'Cash',
         splitPayments: parsedSplitPayments,
-        grandTotal: Math.round(order.grandTotal * 100) / 100,
-        gstAmount: Math.round(order.gstAmount * 100) / 100,
-        serviceChargeAmount: Math.round(order.serviceChargeAmount * 100) / 100,
-        discountAmount: Math.round(order.discountAmount * 100) / 100,
-        tipAmount: Math.round(order.tipAmount * 100) / 100
+        status: order.status || 'completed',
+        customerName: order.customerName || '',
+        customerPhone: order.customerPhone || '',
+        gstAmount: Math.round((order.gstAmount || 0) * 100) / 100,
+        serviceChargeAmount: Math.round((order.serviceChargeAmount || 0) * 100) / 100,
+        discountAmount: Math.round((order.discountAmount || 0) * 100) / 100,
+        tipAmount: Math.round((order.tipAmount || 0) * 100) / 100,
+        roundOff: order.roundOff || 0,
+        covers: order.covers || 1,
+        orderType: order.orderType || 'Dine In',
+        created_at: order.created_at
       };
     });
 
